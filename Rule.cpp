@@ -51,7 +51,7 @@ std::vector<Rule > readRulelist(char* rulelistname){
 }
 
 
-DdNode* makeBDD(DdManager* gbm, std::string cond){
+DdNode* makeBDDforRule(DdManager* gbm, std::string cond){
   // std::cout << cond << std::endl;
   DdNode *bdd=Cudd_ReadOne(gbm);
   DdNode *var, *tmp1, *tmp2, *tmp3;
@@ -60,7 +60,6 @@ DdNode* makeBDD(DdManager* gbm, std::string cond){
   bdd = Cudd_ReadOne(gbm);
   Cudd_Ref(bdd);
   for (int i = w-1; i >= 0; --i) {
-    std::cout << cond[i];
     if ('*' == cond[i])
       continue;
     else {
@@ -82,5 +81,37 @@ DdNode* makeBDD(DdManager* gbm, std::string cond){
       tmp1 = tmp2 = tmp3 = NULL;
     }
   }
-  std::cout << std::endl;
   return bdd;
+}
+
+
+
+DdNode* makeZDDforRule(DdManager* gzm, std::string cond){
+  // std::cout << cond << std::endl;
+  DdNode *zdd=Cudd_ReadOne(gzm);
+  DdNode *var, *tmp1, *tmp2, *tmp3;
+  int w = cond.size();
+
+  zdd = Cudd_ReadOne(gzm);
+  Cudd_Ref(zdd);
+  for (int i = w-1; i >= 0; --i) {
+    if ('0' == cond[i])
+      continue;
+    else if ('1'== cond[i]) {
+      var = Cudd_zddChange(gzm, zdd, i);
+      Cudd_Ref(var); /*Increases the reference count of a node*/
+      Cudd_RecursiveDeref(gzm, zdd);
+      zdd = var;
+      var = NULL;
+    }
+    else{
+      tmp1 = Cudd_zddChange(gzm, zdd, i);
+      tmp2 = Cudd_zddUnion(gzm, zdd, tmp1);
+      Cudd_RecursiveDeref(gzm, zdd);
+      Cudd_RecursiveDeref(gzm, tmp1);
+      zdd = tmp2;
+      tmp1 = tmp2 = NULL;
+    }
+  }
+  return zdd;
+}
