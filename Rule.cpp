@@ -115,3 +115,16 @@ DdNode* makeZDDforRule(DdManager* gzm, std::string cond){
   }
   return zdd;
 }
+
+void partitionRulelist(DdManager* gbm, std::vector<Rule> &R, std::vector<DdNode*> gamma, std::vector<std::set<int> > S) {
+  for(int i=0;i<R.size();i++) {
+    //xにpacket(ri)を入れる ;
+    for(int j = 0; j < gamma.size();j++ ) {
+      // if(){
+      // else if()
+      // else if()
+      // else
+      ;
+    }
+  }
+}
