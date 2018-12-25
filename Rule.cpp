@@ -116,15 +116,101 @@ DdNode* makeZDDforRule(DdManager* gzm, std::string cond){
   return zdd;
 }
 
-void partitionRulelist(DdManager* gbm, std::vector<Rule> &R, std::vector<DdNode*> gamma, std::vector<std::set<int> > S) {
-  for(int i=0;i<R.size();i++) {
-    //xにpacket(ri)を入れる ;
-    for(int j = 0; j < gamma.size();j++ ) {
-      // if(){
-      // else if()
-      // else if()
-      // else
-      ;
+std::vector<DdNode*> makeBddsForRuleList(DdManager* gbm, std::vector<Rule>& R) {
+  std::vector<DdNode*> bdds;
+  for (int i = 0; i < R.size(); ++i)
+    bdds.push_back(makeBDD(gbm, R[i].getCond()));
+}
+
+void partitionRulelistViaBDD(DdManager* gbm, std::vector<Rule>& R, std::vector<DdNode*>* gamma, std::vector<std::set<int> > S) {
+  // std::vector<DdNode*> bdd = makeBddsForRuleList(gbm, R);
+
+  for (int i = 0; i < R.size(); i++) {
+    // printf("r[%d]\n", i);
+    DdNode* X = makeBDD(gbm, R[i].getCond()); // xにpacket(ri)を入れる;
+    Cudd_Ref(X);
+    const DdNode* ONE = Cudd_ReadOne(gbm);
+    const DdNode* ZERO = Cudd_ReadLogicZero(gbm);
+
+    for(int j = 0; j < gamma->size(); j++) {
+      DdNode* XandGamma = Cudd_bddAnd(gbm, X, (*gamma)[j]);
+      Cudd_Ref(XandGamma);
+      if(ZERO == XandGamma) {
+	Cudd_RecursiveDeref(gbm, XandGamma); XandGamma = NULL;
+	//	printf("[%d, %d] Empty\n", i, j);
+	continue; //line 6
+      }
+      else {
+	DdNode* NotX = Cudd_Not(X) ;
+	Cudd_Ref(NotX);
+	DdNode* notXorGamma =Cudd_bddOr(gbm,NotX, (*gamma)[j]) ;
+	Cudd_Ref(notXorGamma);
+	DdNode* GammaAndNotX = Cudd_bddAnd(gbm,NotX, (*gamma)[j]);
+	Cudd_Ref(GammaAndNotX); 
+
+	if(ONE == notXorGamma){
+	  gamma->push_back(GammaAndNotX); //line8 
+	  Cudd_RecursiveDeref(gbm, (*gamma)[j]);
+	  (*gamma)[j] = X ; //line 9
+	  Cudd_Ref((*gamma)[j]);
+	  Cudd_RecursiveDeref(gbm, XandGamma);
+	  Cudd_RecursiveDeref(gbm, notXorGamma);
+	  Cudd_RecursiveDeref(gbm, NotX);
+	  Cudd_RecursiveDeref(gbm, GammaAndNotX);
+	  //	  printf("[%d,%d] x is a subset of gamma\n", i, j);
+	  break; //line10
+	}
+	else {
+	  DdNode* NotGamma = Cudd_Not((*gamma)[j]);
+	  Cudd_Ref(NotGamma);
+	  DdNode* NotGammaOrX = Cudd_bddOr(gbm, NotGamma, X);
+	  Cudd_Ref(NotGammaOrX);
+	  DdNode* NotGammaAndX = Cudd_bddAnd(gbm, NotGamma, X);
+	  Cudd_Ref(NotGammaAndX);
+
+	  if(ONE == NotGammaOrX){
+	    Cudd_RecursiveDeref(gbm, X); //line12
+	    X = NotGammaAndX;
+	    Cudd_Ref(X);
+	    Cudd_RecursiveDeref(gbm, XandGamma);
+	    Cudd_RecursiveDeref(gbm, notXorGamma);
+	    Cudd_RecursiveDeref(gbm, NotX);
+	    Cudd_RecursiveDeref(gbm, GammaAndNotX);
+	    Cudd_RecursiveDeref(gbm, NotGamma);
+	    Cudd_RecursiveDeref(gbm, NotGammaOrX); 
+	    Cudd_RecursiveDeref(gbm, NotGammaAndX); 
+	    //	    printf("[%d,%d] gamma is a subset of x\n", i, j);
+	  }
+	  else{
+	    gamma->push_back(GammaAndNotX); //line14
+	    Cudd_RecursiveDeref(gbm, (*gamma)[j]); //line15
+	    (*gamma)[j] = XandGamma;
+	    Cudd_Ref((*gamma)[j]);
+	    Cudd_RecursiveDeref(gbm, X); //line16
+	    X =  NotGammaAndX;
+	    Cudd_Ref(X);
+	    Cudd_RecursiveDeref(gbm, XandGamma);
+	    Cudd_RecursiveDeref(gbm, notXorGamma);
+	    Cudd_RecursiveDeref(gbm, NotX);
+	    Cudd_RecursiveDeref(gbm, GammaAndNotX);
+	    Cudd_RecursiveDeref(gbm, NotGamma);
+	    Cudd_RecursiveDeref(gbm, NotGammaOrX); 
+	    Cudd_RecursiveDeref(gbm, NotGammaAndX); 
+	    //	    printf("[%d,%d] otherwise\n", i, j);    
+	  }	    
+	}
+      }
+      //      Cudd_RecursiveDeref(gbm, XandGamma);
+      //     Cudd_RecursiveDeref(gbm, notXorGamma);
+      //     Cudd_RecursiveDeref(gbm, NotX);
+      //     Cudd_RecursiveDeref(gbm, GammaAndNotX);
+      //     Cudd_RecursiveDeref(gbm, NotGamma);
+      //     Cudd_RecursiveDeref(gbm, NotGammaOrX); 
+      //     Cudd_RecursiveDeref(gbm, NotGammaAndX); 
     }
+    gamma->push_back(X);
+    Cudd_RecursiveDeref(gbm,X);
+    // printf("r[%d]\n", i);
+    //    std::cout << "the size of gamma = " << gamma->size() << std::endl;
   }
 }
