@@ -122,12 +122,13 @@ std::vector<DdNode*> makeBddsForRuleList(DdManager* gbm, std::vector<Rule>& R) {
     bdds.push_back(makeBDD(gbm, R[i].getCond()));
 }
 
-void partitionRulelistViaBDD(DdManager* gbm, std::vector<Rule>& R, std::vector<DdNode*>* gamma, std::vector<std::set<int> > S) {
+void partitionRulelistViaBDD(DdManager* gbm, std::vector<Rule>& R, std::vector<DdNode*>* gamma, std::vector<std::set<int> >* S) {
   // std::vector<DdNode*> bdd = makeBddsForRuleList(gbm, R);
 
   for (int i = 0; i < R.size(); i++) {
     // printf("r[%d]\n", i);
     DdNode* X = makeBDD(gbm, R[i].getCond()); // xにpacket(ri)を入れる;
+    std::set<int> T; T.insert(i);
     Cudd_Ref(X);
     const DdNode* ONE = Cudd_ReadOne(gbm);
     const DdNode* ZERO = Cudd_ReadLogicZero(gbm);
@@ -151,6 +152,7 @@ void partitionRulelistViaBDD(DdManager* gbm, std::vector<Rule>& R, std::vector<D
 	if(ONE == notXorGamma){
 	  gamma->push_back(GammaAndNotX); //line8 
 	  Cudd_RecursiveDeref(gbm, (*gamma)[j]);
+
 	  (*gamma)[j] = X ; //line 9
 	  Cudd_Ref((*gamma)[j]);
 	  Cudd_RecursiveDeref(gbm, XandGamma);
@@ -158,6 +160,7 @@ void partitionRulelistViaBDD(DdManager* gbm, std::vector<Rule>& R, std::vector<D
 	  Cudd_RecursiveDeref(gbm, NotX);
 	  Cudd_RecursiveDeref(gbm, GammaAndNotX);
 	  //	  printf("[%d,%d] x is a subset of gamma\n", i, j);
+	  S->push_back((*S)[j]);
 	  break; //line10
 	}
 	else {
@@ -180,6 +183,7 @@ void partitionRulelistViaBDD(DdManager* gbm, std::vector<Rule>& R, std::vector<D
 	    Cudd_RecursiveDeref(gbm, NotGammaOrX); 
 	    Cudd_RecursiveDeref(gbm, NotGammaAndX); 
 	    //	    printf("[%d,%d] gamma is a subset of x\n", i, j);
+	    (*S)[j].insert(i);
 	  }
 	  else{
 	    gamma->push_back(GammaAndNotX); //line14
@@ -197,6 +201,8 @@ void partitionRulelistViaBDD(DdManager* gbm, std::vector<Rule>& R, std::vector<D
 	    Cudd_RecursiveDeref(gbm, NotGammaOrX); 
 	    Cudd_RecursiveDeref(gbm, NotGammaAndX); 
 	    //	    printf("[%d,%d] otherwise\n", i, j);    
+	    S->push_back((*S)[j]);
+	    (*S)[j].insert(i);
 	  }	    
 	}
       }
@@ -209,6 +215,7 @@ void partitionRulelistViaBDD(DdManager* gbm, std::vector<Rule>& R, std::vector<D
       //     Cudd_RecursiveDeref(gbm, NotGammaAndX); 
     }
     gamma->push_back(X);
+    S->push_back(T);
     Cudd_RecursiveDeref(gbm,X);
     // printf("r[%d]\n", i);
     //    std::cout << "the size of gamma = " << gamma->size() << std::endl;
